@@ -1,0 +1,488 @@
+options nomprint sortsize=8M;
+options compress=yes;
+
+/* Déclaration des librairies */
+libname save 'M:\eQUIPES\Technique_Gestion\Baccouche_M\Réseau VTR\Fidelisation Clientele\Réemploi\Fourgous\Suivi\Excellium';
+libname ext_nova 'M:\eQUIPES\Technique_Gestion\Baccouche_M\Réseau VTR\Fidelisation Clientele\Réemploi\Suivi\extractions NOVA';
+
+/* Déclaration des paramètres - macro-variables */
+%let an = 2011; /* année du reporting */
+%let rep_extract = \\Prnas01\XFB\PROD\DTVI\data\in\PRX10X1; 
+
+/*Mois, jour et indic des fichiers à importer : */
+
+%let i = 1 ; %let mois&i. = 09; %let jour&i. = 12; %let indic&i. = &i.; 
+%let i = 2 ; %let mois&i. = 09; %let jour&i. = 13; %let indic&i. = &i.; 
+%let i = 3 ; %let mois&i. = 09; %let jour&i. = 14; %let indic&i. = &i.; 
+%let i = 4 ; %let mois&i. = 09; %let jour&i. = 15; %let indic&i. = &i.; 
+%let i = 5 ; %let mois&i. = 09; %let jour&i. = 16; %let indic&i. = &i.; 
+%let i = 6 ; %let mois&i. = 09; %let jour&i. = 19; %let indic&i. = &i.; 
+%let i = 7 ; %let mois&i. = 09; %let jour&i. = 20; %let indic&i. = &i.; 
+%let i = 8 ; %let mois&i. = 09; %let jour&i. = 21; %let indic&i. = &i.; 
+%let i = 9 ; %let mois&i. = 09; %let jour&i. = 22; %let indic&i. = &i.; 
+%let i = 10; %let mois&i. = 09; %let jour&i. = 23; %let indic&i. = &i.;
+%let i = 11; %let mois&i. = 09; %let jour&i. = 26; %let indic&i. = &i.; 
+%let i = 12; %let mois&i. = 09; %let jour&i. = 27; %let indic&i. = &i.; 
+%let i = 13; %let mois&i. = 09; %let jour&i. = 28; %let indic&i. = &i.; 
+%let i = 14; %let mois&i. = 09; %let jour&i. = 29; %let indic&i. = &i.; 
+%let i = 15; %let mois&i. = 09; %let jour&i. = 30; %let indic&i. = &i.; 
+
+%let i = 16; %let mois&i. = 10; %let jour&i. = 03; %let indic&i. = &i.;
+%let i = 17; %let mois&i. = 10; %let jour&i. = 04; %let indic&i. = &i.; 
+%let i = 18; %let mois&i. = 10; %let jour&i. = 05; %let indic&i. = &i.; 
+%let i = 19; %let mois&i. = 10; %let jour&i. = 06; %let indic&i. = &i.; 
+%let i = 20; %let mois&i. = 10; %let jour&i. = 07; %let indic&i. = &i.; 
+%let i = 21; %let mois&i. = 10; %let jour&i. = 10; %let indic&i. = &i.; 
+%let i = 22; %let mois&i. = 10; %let jour&i. = 11; %let indic&i. = &i.; 
+%let i = 23; %let mois&i. = 10; %let jour&i. = 12; %let indic&i. = &i.; 
+%let i = 24; %let mois&i. = 10; %let jour&i. = 13; %let indic&i. = &i.;
+%let i = 25; %let mois&i. = 10; %let jour&i. = 14; %let indic&i. = &i.;
+%let i = 26; %let mois&i. = 10; %let jour&i. = 17; %let indic&i. = &i.; 
+%let i = 27; %let mois&i. = 10; %let jour&i. = 18; %let indic&i. = &i.; 
+%let i = 28; %let mois&i. = 10; %let jour&i. = 19; %let indic&i. = &i.; 
+%let i = 29; %let mois&i. = 10; %let jour&i. = 20; %let indic&i. = &i.; 
+%let i = 30; %let mois&i. = 10; %let jour&i. = 21; %let indic&i. = &i.; 
+%let i = 31; %let mois&i. = 10; %let jour&i. = 24; %let indic&i. = &i.; 
+%let i = 32; %let mois&i. = 10; %let jour&i. = 25; %let indic&i. = &i.; 
+%let i = 33; %let mois&i. = 10; %let jour&i. = 26; %let indic&i. = &i.; 
+%let i = 34; %let mois&i. = 10; %let jour&i. = 27; %let indic&i. = &i.; 
+%let i = 35; %let mois&i. = 10; %let jour&i. = 28; %let indic&i. = &i.; 
+%let i = 36; %let mois&i. = 10; %let jour&i. = 31; %let indic&i. = &i.;
+
+%let i = 37; %let mois&i. = 11; %let jour&i. = 02; %let indic&i. = &i.; 
+%let i = 38; %let mois&i. = 11; %let jour&i. = 03; %let indic&i. = &i.; 
+%let i = 39; %let mois&i. = 11; %let jour&i. = 04; %let indic&i. = &i.; 
+%let i = 40; %let mois&i. = 11; %let jour&i. = 07; %let indic&i. = &i.; 
+%let i = 41; %let mois&i. = 11; %let jour&i. = 08; %let indic&i. = &i.; 
+%let i = 42; %let mois&i. = 11; %let jour&i. = 09; %let indic&i. = &i.; 
+%let i = 43; %let mois&i. = 11; %let jour&i. = 10; %let indic&i. = &i.; 
+%let i = 44; %let mois&i. = 11; %let jour&i. = 14; %let indic&i. = &i.; 
+%let i = 45; %let mois&i. = 11; %let jour&i. = 15; %let indic&i. = &i.; 
+%let i = 46; %let mois&i. = 11; %let jour&i. = 16; %let indic&i. = &i.; 
+%let i = 47; %let mois&i. = 11; %let jour&i. = 17; %let indic&i. = &i.;
+%let i = 48; %let mois&i. = 11; %let jour&i. = 18; %let indic&i. = &i.;
+%let i = 49; %let mois&i. = 11; %let jour&i. = 21; %let indic&i. = &i.; 
+%let i = 50; %let mois&i. = 11; %let jour&i. = 22; %let indic&i. = &i.; 
+%let i = 51; %let mois&i. = 11; %let jour&i. = 23; %let indic&i. = &i.; 
+%let i = 52; %let mois&i. = 11; %let jour&i. = 24; %let indic&i. = &i.; 
+%let i = 53; %let mois&i. = 11; %let jour&i. = 25; %let indic&i. = &i.; 
+%let i = 54; %let mois&i. = 11; %let jour&i. = 28; %let indic&i. = &i.; 
+%let i = 55; %let mois&i. = 11; %let jour&i. = 29; %let indic&i. = &i.; 
+%let i = 56; %let mois&i. = 11; %let jour&i. = 30; %let indic&i. = &i.; 
+
+%let i = 57; %let mois&i. = 12; %let jour&i. = 01; %let indic&i. = &i.; 
+%let i = 58; %let mois&i. = 12; %let jour&i. = 02; %let indic&i. = &i.; 
+%let i = 59; %let mois&i. = 12; %let jour&i. = 05; %let indic&i. = &i.; 
+%let i = 60; %let mois&i. = 12; %let jour&i. = 06; %let indic&i. = &i.; 
+%let i = 61; %let mois&i. = 12; %let jour&i. = 08; %let indic&i. = &i.; 
+%let i = 62; %let mois&i. = 12; %let jour&i. = 09; %let indic&i. = &i.; 
+%let i = 63; %let mois&i. = 12; %let jour&i. = 12; %let indic&i. = &i.; 
+%let i = 64; %let mois&i. = 12; %let jour&i. = 13; %let indic&i. = &i.;
+%let i = 65; %let mois&i. = 12; %let jour&i. = 14; %let indic&i. = &i.; 
+%let i = 66; %let mois&i. = 12; %let jour&i. = 15; %let indic&i. = &i.; 
+%let i = 67; %let mois&i. = 12; %let jour&i. = 16; %let indic&i. = &i.; 
+%let i = 68; %let mois&i. = 12; %let jour&i. = 19; %let indic&i. = &i.; 
+%let i = 69; %let mois&i. = 12; %let jour&i. = 20; %let indic&i. = &i.; 
+%let i = 70; %let mois&i. = 12; %let jour&i. = 21; %let indic&i. = &i.; 
+%let i = 71; %let mois&i. = 12; %let jour&i. = 22; %let indic&i. = &i.; 
+%let i = 72; %let mois&i. = 12; %let jour&i. = 23; %let indic&i. = &i.;
+%let i = 73; %let mois&i. = 12; %let jour&i. = 26; %let indic&i. = &i.;
+%let i = 74; %let mois&i. = 12; %let jour&i. = 27; %let indic&i. = &i.;
+%let i = 75; %let mois&i. = 12; %let jour&i. = 28; %let indic&i. = &i.;
+%let i = 76; %let mois&i. = 12; %let jour&i. = 29; %let indic&i. = &i.; 
+ 
+
+%macro import1(annee = , mois = ,jour = , indic = , rep_extract = );
+data WORK.CTS&&indic&j;
+%let _EFIERR_ = 0; /* set the ERROR detection macro variable */
+infile "&rep_extract\excl_reemploi_rcv_nova_&annee&mois&jour..csv"
+delimiter = ';' lrecl=32767 MISSOVER firstobs=1;
+informat NIV_ENR best1. ;
+informat ID_REMP best16. ; 
+informat NO_CTR $30. ;
+informat ACT_NO best9. ; 
+informat PTF_ID best9. ; 
+informat MT_FDS_N_RAP best13. ; 
+informat CD_NAT_EVT best3. ;
+informat EVT $3.;
+informat ID_EVT_REMP best16. ;
+informat TY_REMP $2.;
+informat CD_STU_REMP $2.; 
+informat STATUT_REEMP $20.; 
+informat ID_SYS_APL best4. ;
+informat SA $8.; 
+informat CANAL_DIST best3. ;
+informat CD_RES_DST best2. ;
+informat RES_DST  $20.; 
+informat ID_DIST_RDU best7.; 
+informat CD_INSP  $10.;
+informat ID_PRD  $5.;
+informat MNEM_PRD $4.;
+informat CD_CAD_JUR_EPN $1.;
+informat TARIF $4.;
+informat CD_UNI_JUR best7. ;
+informat REF_SER_GES $4.;
+informat NO_CLI_MVT $10.;
+informat NO_ABON_MVT $10.;
+informat NM_SCP  $25.;
+informat PTF_ID_TRN best9. ;
+informat MOD_REMP   best1. ;
+informat SEN_DEM_SEPIA best2. ;
+informat NO_BDX_REMP   best16. ;
+informat NO_BDX_NC   best16. ;
+informat DT_CRE_EVT_REMP  yymmdd8. ;
+informat TY_MVT_REMP $2.;
+informat MVT_REMP $20.;
+informat IND_AUT_MVT $1.;
+informat FG_REMP_ANNUL $1.;
+informat SENS_MVT $1.;
+informat DT_CRE_MVT_SA yymmdd8.;
+informat DT_VAL_ACT  yymmdd8. ;
+informat MT_MVT   best11. ;
+informat CD_STU_MT  $2.;
+informat MT_REEMP   best11. ;
+informat MT_CLIENT   best11. ;
+informat CD_NAT_FDS_CLIENT $2.;
+informat NAT_FDS_CLIENT  $20.;
+informat MT_N_REMP   best11. ;
+informat FG_ELG_COM_REMP $1.;
+informat TX_CAL_ASSI 3.2;
+informat MT_ASSI_COM   best11. ;
+informat TY_PRON_REMP   best2. ;
+informat PROMO_REMP $20.;
+informat MT_PRON   best11. ;
+informat MT_ASSI_COM_PRON   best11. ;
+informat CD_USER $8.;
+
+format NIV_ENR best1. ;
+format ID_REMP best16. ; 
+format NO_CTR $30. ;
+format ACT_NO best9. ; 
+format PTF_ID best9. ; 
+format MT_FDS_N_RAP best13. ; 
+format CD_NAT_EVT best3. ;
+format EVT $3.;
+format ID_EVT_REMP best16. ;
+format TY_REMP $2.;
+format CD_STU_REMP $16.;
+format STATUT_REEMP $20.;
+format ID_SYS_APL best4. ;
+format SA $30.;
+format CANAL_DIST best9. ;
+format CD_RES_DST best11. ;
+format RES_DST  $20.;
+format ID_DIST_RDU best8. ;
+format CD_INSP  $10.;
+format ID_PRD  $5.;
+format MNEM_PRD $4.;
+format CD_CAD_JUR_EPN $1.;
+format TARIF $4.;
+format CD_UNI_JUR best7. ;
+format REF_SER_GES $4.;
+format NO_CLI_MVT $10.;
+format NO_ABON_MVT $10.;
+format NM_SCP  $25.;
+format PTF_ID_TRN best9. ;
+format MOD_REMP   best1. ;
+format SEN_DEM_SEPIA best2. ;
+format NO_BDX_REMP   best16. ;
+format NO_BDX_NC   best16. ;
+format DT_CRE_EVT_REMP   yymmdd10. ;
+format TY_MVT_REMP $2.;
+format MVT_REMP $20.;
+format IND_AUT_MVT $1.;
+format FG_REMP_ANNUL $1.;
+format SENS_MVT $1.;
+format DT_CRE_MVT_SA yymmdd10.;
+format DT_VAL_ACT  yymmdd10. ;
+format MT_MVT   best11. ;
+format CD_STU_MT  $2.;
+format MT_REEMP   best11. ;
+format MT_CLIENT   best11. ;
+format CD_NAT_FDS_CLIENT $2.;
+format NAT_FDS_CLIENT  $20.;
+format MT_N_REMP   best11. ;
+format FG_ELG_COM_REMP $1.;
+format TX_CAL_ASSI 3.2;
+format MT_ASSI_COM   best11. ;
+format TY_PRON_REMP   best2. ;
+format PROMO_REMP $20.;
+format MT_PRON   best11. ;
+format MT_ASSI_COM_PRON   best11. ;
+format CD_USER $8.;
+
+input 
+NIV_ENR
+ID_REMP
+NO_CTR $
+ACT_NO
+PTF_ID
+MT_FDS_N_RAP
+CD_NAT_EVT
+EVT $
+ID_EVT_REMP
+TY_REMP $
+CD_STU_REMP $
+STATUT_REEMP $
+ID_SYS_APL
+SA $
+CANAL_DIST
+CD_RES_DST
+RES_DST $
+ID_DIST_RDU 
+CD_INSP $
+ID_PRD $
+MNEM_PRD $
+CD_CAD_JUR_EPN $
+TARIF $
+CD_UNI_JUR
+REF_SER_GES $
+NO_CLI_MVT $
+NO_ABON_MVT $
+NM_SCP $
+PTF_ID_TRN
+MOD_REMP
+SEN_DEM_SEPIA
+NO_BDX_REMP
+NO_BDX_NC
+DT_CRE_EVT_REMP
+TY_MVT_REMP $
+MVT_REMP $
+IND_AUT_MVT $
+FG_REMP_ANNUL $
+SENS_MVT $
+DT_CRE_MVT_SA
+DT_VAL_ACT
+MT_MVT
+CD_STU_MT $
+MT_REEMP
+MT_CLIENT
+CD_NAT_FDS_CLIENT $
+NAT_FDS_CLIENT $
+MT_N_REMP
+FG_ELG_COM_REMP $
+TX_CAL_ASSI
+MT_ASSI_COM
+TY_PRON_REMP
+PROMO_REMP $
+MT_PRON
+MT_ASSI_COM_PRON
+CD_USER $ ;
+if _ERROR_ then call symput('_EFIERR_',1);  /* set ERROR detection macro variable */
+%mend;
+/*Lancement de la macro import pour chaque fichier à importer*/
+
+%macro lancement_import1();
+
+%do j = 1 %to &i. ;
+		%import1(annee = &an, mois = &&mois&j, jour = &&jour&j, indic = &&indic&j, 
+		rep_extract = &rep_extract);
+
+	%if &j = 1 %then %do;
+		data REEMP_nova1; 
+		/*format numcont motif mvt nom type date mat_agt num_bord sens montant assiette 
+		mont_promo ass_promo tf eligibilite;*/
+		set cts&j; 
+	    /*keep numcont date mat_agt num_bord sens montant assiette nom type mont_promo 
+		ass_promo motif mvt tf eligibilite;*/
+		run;
+	%end;
+	%else %do;
+		data REEMP_nova1; 
+		set cts&j REEMP_nova1; 
+	   	run;
+	%end;
+
+		/*suppression table inutile*/
+	proc delete data = cts&j; run;
+%end;
+%mend;
+%lancement_import1();
+data save.REEMP_nova1;
+set REEMP_nova1;
+where NIV_ENR = 1;
+run;
+
+/**********************************************************************************************/
+%macro import2(annee = , mois = ,jour = , indic = , rep_extract = );
+data WORK.CTS&&indic&j;
+%let _EFIERR_ = 0; /* set the ERROR detection macro variable */
+infile "&rep_extract\excl_reemploi_rcv_nova_&annee&mois&jour..csv"
+delimiter = ';' lrecl=32767 MISSOVER firstobs=1;
+informat NIV_ENR best1. ;
+informat ID_REMP best16. ; 
+informat NO_CTR_SOURCE $30. ;
+informat ACT_NO_SOURCE best9. ; 
+informat PTF_ID best9. ; 
+informat MT_FDS_N_RAP best13. ; 
+informat CD_NAT_EVT best3. ;
+informat EVT $3.;
+informat ID_EVT_REMP best16. ;
+informat TY_REMP $2.;
+informat NO_BDX_REMP best16.; /**/
+informat IDT_FONDS best10.; 
+informat FG_CRE_FDS best1. ;
+informat NO_CTR_CIBLE $30.; 
+informat ACT_NO_CIBLE best9. ;
+informat MT_REMP best11. ;
+informat STAT_MT  $1.; 
+informat CD_USER $8.; 
+
+format NIV_ENR best1. ;
+format ID_REMP best16. ; 
+format NO_CTR_SOURCE $30. ;
+format ACT_NO_SOURCE best9. ; 
+format PTF_ID best9. ; 
+format MT_FDS_N_RAP best13. ; 
+format CD_NAT_EVT best3. ;
+format EVT $3.;
+format ID_EVT_REMP best16. ;
+format TY_REMP $2.;
+format NO_BDX_REMP best16.; /**/
+format IDT_FONDS best10.; 
+format FG_CRE_FDS best1. ;
+format NO_CTR_CIBLE $30.; 
+format ACT_NO_CIBLE best9. ;
+format MT_REMP best11. ;
+format STAT_MT  $1.; 
+format CD_USER $8.; 
+
+input 
+NIV_ENR
+ID_REMP
+NO_CTR_SOURCE $
+ACT_NO_SOURCE
+PTF_ID
+MT_FDS_N_RAP
+CD_NAT_EVT
+EVT $
+ID_EVT_REMP
+TY_REMP $
+NO_BDX_REMP
+IDT_FONDS
+FG_CRE_FDS
+NO_CTR_CIBLE $
+ACT_NO_CIBLE
+MT_REMP
+STAT_MT $
+CD_USER $ ;
+if _ERROR_ then call symput('_EFIERR_',1);  /* set ERROR detection macro variable */
+%mend;
+/*Lancement de la macro import pour chaque fichier à importer*/
+
+%macro lancement_import2();
+
+%do j = 1 %to &i. ;
+		%import2(annee = &an, mois = &&mois&j, jour = &&jour&j, indic = &&indic&j, 
+		rep_extract = &rep_extract);
+
+	%if &j = 1 %then %do;
+		data REEMP_nova2; 
+		set cts&j; 
+	    run;
+	%end;
+	%else %do;
+		data REEMP_nova2; 
+		set cts&j REEMP_nova2; 
+	   	run;
+	%end;
+
+		/*suppression table inutile*/
+	proc delete data = cts&j; run;
+%end;
+%mend;
+%lancement_import2();
+data save.REEMP_nova2;
+set REEMP_nova2;
+where NIV_ENR = 2;
+run;
+/**************************************TRAITEMENT**********************************************/
+data REEMP_nova2_a;
+set save.REEMP_nova2;
+rename NO_CTR_source=no_ctr;
+rename ACT_NO_source=act_no;
+run;
+data REEMP_nova1_A;
+set save.REEMP_nova1;
+where RES_DST in("AXA PART" "Courtage" "Conseil" "DOM TOM" "AGA M{tropole") or FG_REMP_ANNUL="A";
+run;
+%jointure_a_and_not_b(tab_a=REEMP_nova2_a, tab_b=REEMP_nova1_A, key_var=NO_CTR ACT_NO, tab_res=save.REEMP_nova2_vf, tmp_prefix=tmp_, tmp_lib=, sort_options=);
+data REEMP_nova2_vff;
+set save.REEMP_nova2_vf ;
+rename NO_CTR=NO_CTR_SOURCE;
+rename ACT_NO=ACT_NO_SOURCE;
+run;
+data save.reemp_nova2_vf;
+set REEMP_nova2_vff(keep =  NIV_ENR ID_REMP NO_CTR_SOURCE ACT_NO_SOURCE PTF_ID MT_FDS_N_RAP CD_NAT_EVT EVT ID_EVT_REMP TY_REMP NO_BDX_REMP IDT_FONDS FG_CRE_FDS NO_CTR_CIBLE ACT_NO_CIBLE MT_REMP STAT_MT CD_USER);
+run;
+/**********************************************************************************************/
+									/* niveau 1 */
+Data REEMP_nova1F;
+set save.REEMP_nova1;
+where TY_REMP="TF" and (FG_REMP_ANNUL ne "A");
+run;
+proc sort data = REEMP_nova1F; by NO_CTR; run;
+proc summary data = REEMP_nova1F; by NO_CTR;
+var MT_REEMP; 
+output out = REEMP_nova1F_sum sum=;
+run;
+/**********************************************************************************************/
+											/* niveau 2 */
+Data save.REEMP_nova2F;
+set save.REEMP_nova2_vf;
+where TY_REMP="TF";
+run;
+proc sort data = REEMP_nova2F; by NO_CTR_CIBLE; run;
+proc summary data = REEMP_nova2F; by NO_CTR_CIBLE;
+var MT_REMP; 
+id no_ctr_source;
+output out = save.REEMP_nova2F_sum sum=;
+run;
+/*********************************************()************************************************/
+proc sort data = REEMP_nova2F; by NO_CTR_source; run;
+proc summary data = REEMP_nova2F; by NO_CTR_source;
+var MT_REMP; 
+id no_ctr_CIBLE;
+output out = REEMP_nova2F_sum2 sum=;
+run;
+/***********************************************************************************************/
+data test;
+set save.REEMP_nova2F;
+retain compteur;
+if NO_CTR_source=lag(NO_CTR_source) and NO_CTR_CIBLE ne lag(NO_CTR_CIBLE)
+then compteur=compteur+1;
+else compteur=1;
+run;
+data test1;
+set test;
+where compteur ne 1;
+top_doublons="D";
+run;
+/*					Top_doublons			*/
+%jointure_a(tab_a=test1, tab_b=test, key_var=NO_CTR_source, tab_res=top_doublons, tmp_prefix=tmp_, tmp_lib=, sort_options=);
+/*					sauvegarde 			*/
+data save.test1;
+set test1;
+run;
+data save.test;
+set test;
+run;
+data save.top_doublons;
+set top_doublons;
+run;
+data save.REEMP_nova2F;
+set REEMP_nova2F;
+run;
+data save.REEMP_nova1F;
+set REEMP_nova1F;
+run;
+
+data save.REEMP_nova1F_sum;
+set REEMP_nova1F_sum;
+run;
+data save.REEMP_nova2F_sum;
+set REEMP_nova2F_sum (drop = _type_ );
+run;
+data save.REEMP_nova2F_sum2;
+set REEMP_nova2F_sum2 (drop = _type_ );
+run;
