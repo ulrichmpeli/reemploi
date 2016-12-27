@@ -1,0 +1,685 @@
+ /***************************************************************************************
+ !      PROGRAMME DE SELECTION DES CONTRATS REEMPLOYABLES    !
+ ****************************************************************************************
+ !                                                                                      !
+ ****************************************************************************************
+ !                      !
+ ! ENTREE  : date_calc= date de la base STC dans laquelle on fait la sélection     !
+ !        EX: 0311 => base novembre 2003                             !
+ !                      !
+ !      an_calc= année de calcul entière                          !
+ !      mois_calc= mois de calcul                           !
+ !      jour_calc=jour de calcul                !
+ !      an_fin=année de calcul tronquée          !
+ !          d= pour déterminer l'intervalle, en jour                              !
+ !      reg_com= année des règles de commissionnement à appliquer    !
+ !                      !
+ ! VARIABLES:                   !
+ !  NUMADSO : numéro client                !
+ !      CODPORT : code portefeuille              !
+ !  DATNAIS : date de naissance du souscripteur          !
+ !  BRANCHE : branche du produit,             !
+ !     'C': les contrats de capitalisation         !
+ !     'V': pour les contrats d'assurance vie        !
+ !  FAMILLE : Famille du produit             !
+ !  PUPP    : Modalité de versement des primes          !
+ !     'U': prime unique             !
+ !     'P': prime périodique.            !
+ !      FOURGOUS : précise si le contrat est transférable fourgous ('O'/'N')   !
+ !  CODETA  : Code d'état               !
+ !     'EC': en cours,              !
+ !     'LC': libéré de cotisation           !
+ !     'RD': réduit              !
+ !  TX_TECH : Taux minimum garanti(sur 4 caractères)                              !
+ !      TX_TECH_BASC07: Second taux technique suite à la bascule de 2007                     !
+ !  TX_COMM : Taux de commissionnement             !
+ !                      !
+ !  DAT_CHGT_SIT : date du dernier changement de situation. Permet de savoir si  !
+ !           le contrat réduit l'est depuis plus ou moins de 2 ans.   !
+ !  DAT_REEMP_MIN : date minimum à partir de laquelle le contrat peut être réemployé!
+ !  DAT_REEMP_GF : date d'attribution de la garantie de fidélité     !
+ !  DAT_REEMP_MAX : l'indication concernant l'âge du client pour les contrats vie !
+ !       Pour les contrats capi, cette valeur est égale à 01,01,9999   !
+ !  PM : provision mathématique              !
+ !  PM_EURO : la partie en euro              !
+ !   la différence de PM et PM_euro est égale à la partie en unités de compte. !
+ !                      !
+ !                      !
+ ****************************************************************************************/
+
+/* ATTENTION : la masse réemployable a été mise à jour sans mise à jour de la pyramide commerciale, les infos "réseau" peuvent être erronnées */
+
+%include "~/NAS/M/eQUIPES/Technique_Gestion/Baccouche_M/Reseau VTR/SASprogrammes/Utilitaires/migration/autoexec.commun92.sas";
+%include "~/NAS/M/eQUIPES/Technique_Gestion/Baccouche_M/Reseau VTR/SASprogrammes/Utilitaires/migration/rutilitaires.sas";
+ 
+/*Création des librairies*/
+libname base_loc "~/NAS/M/eQUIPES/Technique_Gestion/Baccouche_M/Reseau VTR/SASbases";
+libname rep "~/NAS/M/eQUIPES/Technique_Gestion/01 - Actuariat/Inforce Revenue Management/Reemploi/Etudes_Stats/Etudes_gen_rs/Commissionnement/Bases_commissionnement";
+  
+/*libname save 'M:\eQUIPES\Technique_Gestion\Baccouche_M\Réseau VTR\Fidelisation Clientele\Réemploi\Etudes_Stats\Etudes_gen_rs\Masse réemployable';*/
+/*libname save 'D:\Documents\S227594\Mes Documents\Bases SAS';*/
+libname save '~/NAS/M/eQUIPES/Technique_Gestion/01 - Actuariat/Inforce Revenue Management/Reemploi/Suivi/MR';
+ 
+ 
+%let no_vtr = 7;
+
+%macro connecter_vtr(no_vtr=);
+	libname vtr&no_vtr. "~/PUBLIC/IAA160/VIDTRCV&no_vtr./donnees";
+%mend;
+
+　
+%include "~/NAS/M/eQUIPES/Technique_Gestion/Baccouche_M/Reseau VTR/SASprogrammes/Utilitaires/migration/rutilitaires.sas";
+ 
+%connecter_vtr(no_vtr=&no_vtr.);
+ 
+%let mem        =  vtr7;
+%let date_calc  = 1508 ;
+%let jour_calc  =    31;
+%let mois_calc  =    08 ;
+%let an_calc    =  2015;
+%let an_fin     =    15;
+%let d          =   365;
+%let reg_com    =  2015 ;
+ 
+%let y=%eval(&date_calc/100);
+%let m=%eval(&date_calc-&y*100);
+%let calc=mdy(&m,30,%eval(2000+&y));
+%let mois=%substr(&date_calc,3,2);
+%let keep=&var ;
+ 
+/* Librairie SAS */
+
+libname VI "/mutu/FR/batch/data/prod/IF12/VIE/IAA300/TABVIE" ;
+
+libname AK1   "/mutu/FR/batch/data/prod/IF12/VIE/ICO300/RCVPM/M&DATE_CALC." ;
+
+libname AK2  "/mutu/FR/batch/data/prod/IF12/VIE/IRS300/VISTAINV/M&DATE_CALC." ; 
+libname AK3  "/mutu/FR/batch/data/prod/IF12/VIE/ICO300/VISTAINV/M&DATE_CALC." ; 
+libname AK4  "/mutu/FR/batch/data/prod/IF12/VIE/ICU300/VISTAINV/M&DATE_CALC." ; 
+
+libname AK5  "/mutu/FR/batch/data/prod/IF12/VIE/IRS300/ILISINV/M&DATE_CALC." ; 
+libname AK6  "/mutu/FR/batch/data/prod/IF12/VIE/ICO300/ILISINV/M&DATE_CALC." ; 
+libname AK7  "/mutu/FR/batch/data/prod/IF12/VIE/ICU300/ILISINV/M&DATE_CALC." ; 
+ 
+
+data support ; 
+	set VI.VIESTC ; 
+	keep codsup typ_supp ; 
+run ; 
+proc sort data=support nodupkey; by codsup ; run ; 
+
+data pm_rcs ;
+set ak1.PMS (keep = numctv codprod codsup coduc resf epargne MTCCOTF reseau)
+	ak2.PMS (keep = numctv codprod codsup coduc resf epargne MTCCOTF reseau)
+	ak3.PMS (keep = numctv codprod codsup coduc resf epargne MTCCOTF reseau)
+	ak4.PMS (keep = numctv codprod codsup coduc resf epargne MTCCOTF reseau)
+	ak5.PMS (keep = numctv codprod codsup coduc resf epargne MTCCOTF reseau)
+	ak6.PMS (keep = numctv codprod codsup coduc resf epargne MTCCOTF reseau)
+	ak7.PMS (keep = numctv codprod codsup coduc resf epargne MTCCOTF reseau); 
+
+	where reseau ="SALARIES" ; 
+run ; 
+proc sort data= pm_rcs ; by codsup ; run ; 
+
+data pm_rcs; 
+	merge pm_rcs(in=a) support (in=b) ; 
+	by codsup ; 
+	if a ; 
+run ; 
+
+data pm_rcs (drop = numctv codprod codsup coduc resf epargne); 
+set pm_rcs ; 
+where substr(codsup,1,3) ne "CP0" and resf > 0;
+if codsup in ('CILP' 'CIT' 'DA' 'DAC4' 'DAC9' 'DALP' 'DA4' 'DA9' 'DBA' 'DEC' 'DIAM' 'EXO'
+ 'EXO1' 'ICE' 'IFC4' 'IFC5' 'IFR4' 'IFR5' 'IJH4' 'IJH5' 'IJL1' 'IJL2' 'IJ1' 'IJ2' 'IJ3'
+ 'IJ4' 'IJ5' 'IJ6' 'ITE1' 'ITE2' 'ITE3' 'ITRV' 'RELP' 'RENT' 'RPL1' 'TA' 'TAC' 'TAD' 'TA3'
+ 'TC' 'TD' 'TD3' 'TIR' 'TPA') then delete;
+
+ PM = sum(resf,0);
+ if typ_supp= "E"  then PM_EURO = sum(resf,0); else PM_EURO = 0;
+
+police = int(numctv/1);
+if PM = 0 then delete;
+run;
+ 
+proc sort data = pm_rcs; by police; run;
+proc summary data = pm_rcs; by police;
+var pm pm_euro MTCCOTF;
+output out = pm_rcs2 (drop = _type_ _freq_) sum=;
+run;
+ 
+/* SELECTION MASSE REEMPLOYABLE */
+ 
+/* -----------------* Base produits *------------------- */
+ 
+data pdts /*(drop = pupp)*/; set base_loc.pdts_rcv;
+k='xx'; /*permet de voir si aucun produit n'a été oublié*/
+codprod=nom||type;
+k=substr(codprod,1,2);
+if k in ('EM' 'EP' 'ER' 'RO' 'RI' 'RC' 'IA' 'IB' 'IE' 'IM' 'IR' 'IO' 'IP' 'IR')
+ then famille='RE';
+if k in ('FF' 'FI') then famille='FF';
+pupp=substr(pupp,2,1);
+run;
+data pdts; 
+	set pdts; 
+	rename pupp2=pupp; 
+	codprod = compress(codprod) ; 
+	keep nom type libprod branche Fourgous codprod pupp  ; 
+run;
+
+proc sql ; 
+
+	insert into pdts 
+		values ('L' '01' 'LIBREPARGNE CAPI' 'CAPI' 'U' 'O' '94004' ) 
+		values ('L' '05' 'LIBREPARGNE VIE' 'VIE' 'U' 'O' '93994' )
+		values ('DR' '71' 'CADENTIEL CAPI' 'CAPI' 'U' 'O' '94044' )
+		values ('DR' '64' 'CADENTIEL VIE' 'VIE' 'U' 'O' '94034' )
+		values ('CQ' '01' 'CINQ SUR CINQ' 'CAPI' 'P' 'O' '94394' )
+		values ('CQ' '05' 'CINQ SUR CINQ' 'VIE' 'P' 'O' '94384' )
+		values ('TB' '01' 'MODUL PLAN' 'CAPI' 'P' 'N' '94154' )
+		values ('TB' '05' 'MODUL PLAN' 'VIE' 'P' 'N' '94144' )
+		values ('RE' '05' 'ALIZE RETRAITE' 'VIE' 'P' 'O' '94404' )
+		values ('PP' '01' 'COMPTE EPARGNE' 'CAPI' 'P' 'O' '94424' )
+		values ('PP' '05' 'COMPTE EPARGNE' 'VIE' 'P' 'O' '94414' )
+		values ('OC' '01' 'EPARGNE OCEAN' 'CAPI' 'P' 'O' '94484' )
+		values ('OC' '05' 'EPARGNE OCEAN' 'VIE' 'P' 'O' '94474' )
+		values ('V' '01' 'Optimum Performance' 'CAPI' 'P' 'O' '94954' )
+		values ('V' '05' 'Optimum Performance' 'VIE' 'P' 'O' '94944' )  
+		values ('NP' '05' 'EURACTIEL' 'VIE' 'P' 'N' '93614' ) 
+		values ('NP' '02' 'EURACTIEL' 'CAPI' 'P' 'N' '93604' )
+		values ('IE' '05' 'Euractiel Pro' 'VIE' 'P' 'N' '93594' )
+		values ('LI' '05' 'LIBRE INV' 'VIE' 'P' 'O' '94014' )
+		values ('LI' '01' 'LIBRE INV' 'CAPI' 'P' 'O' '94024' ) 
+		values ('FF' '05' 'EXP INDICE' 'VIE' 'U' 'N' '93974' )
+		values ('AR' '05' 'Objectif Retraite' 'VIE' 'U' 'O' '94494' )
+		values ('AR' '02' 'Objectif Retraite' 'CAPI' 'U' 'O' '94504')
+		values ('R' '02' 'Compte Retraite' 'CAPI' 'P' 'O' '94524')
+		values ('R' '05' 'Compte Retraite' 'VIE' 'P' 'O' '94514')
+		values ('OU' '05' 'OBJECTIF' 'VIE' 'U' 'O' '94554')
+		values ('OU' '02' 'OBJECTIF' 'CAPI' 'U' 'O' '94564')
+		values ('RF' '05' 'ACTIF UAP' 'VIE' 'U' 'O' '94634') 
+		values ('FF' '05' 'EXP INDICE' 'VIE' 'U' 'N' '93974')
+		values ('FI' '05' 'EXP INDICE' 'VIE' 'U' 'N' '93974')
+		values ('FF' '05' 'PERP Confort' 'VIE' 'U' 'N' '93634') ; 
+ 
+		/*  LIBREINVEST EXPANTIEL  PERP FORMULE AUTONOMIE */
+quit ; 
+
+ 
+data &mem..outil_MR_&date_calc._com&reg_com._tx (drop = dteff);
+set ak1.pm( keep = numctv codprod dteff codeta datnais dtthgf numadso codport datech DURCTV MTCCOTF reseau)
+	ak2.pm( keep = numctv codprod dteff codeta datnais dtthgf numadso codport datech DURCTV MTCCOTF reseau)
+	ak3.pm( keep = numctv codprod dteff codeta datnais dtthgf numadso codport datech DURCTV MTCCOTF reseau)
+	ak4.pm( keep = numctv codprod dteff codeta datnais dtthgf numadso codport datech DURCTV MTCCOTF reseau)
+	ak5.pm( keep = numctv codprod dteff codeta datnais dtthgf numadso codport datech DURCTV MTCCOTF reseau)
+	ak6.pm( keep = numctv codprod dteff codeta datnais dtthgf numadso codport datech DURCTV MTCCOTF reseau)
+	ak7.pm( keep = numctv codprod dteff codeta datnais dtthgf numadso codport datech DURCTV MTCCOTF reseau);
+	where reseau = "SALARIES" ; 
+
+codprod =compress(codprod) ; 
+format dateff dat_reemp_min ddmmyy10.;
+if dteff^='' then dateff=mdy(int((dteff-int(dteff/10000)*10000)/100),
+      dteff-int(dteff/100)*100,int(dteff/10000));
+dat_reemp_min=mdy(month(dateff), day(dateff), (year(dateff)+8));
+run;
+ 
+/*Nous récupérons les informations sur les produits à partir de la base pdts*/
+proc sort data = &mem..outil_MR_&date_calc._com&reg_com._tx; by codprod; run;
+proc sort data = pdts; by codprod; run;
+data &mem..outil_MR_&date_calc._com&reg_com._tx;
+merge &mem..outil_MR_&date_calc._com&reg_com._tx (in=a)
+   pdts (/*keep = nom pupp branche famille fourgous type libprod codprod */ in=b);
+  by codprod;
+  if a ; 
+run;
+ 
+/*Nous supprimons à chaque étape la table qui ne sera plus nécessaire*/
+/*proc delete data=pdts; run;*/
+ 
+/*Pour les produits en primes périodiques, le réemploi est possible
+à partir de leurs 10ème anniversaire. Ici, nous prenons en compte aussi, les contrats dont
+la date d'effet peut être "29 février"*/
+
+data &mem..outil_MR_&date_calc._com&reg_com._tx ;
+set &mem..outil_MR_&date_calc._com&reg_com._tx;
+if codprod in ("XL 99","XL 98") then do;
+ pupp = "U";
+ nom = "XL";
+ if codprod = "XL 98" then type = "98"; else type = "99";
+ libprod = "ODYSSIEL ACCUMULATOR";
+ branche = "VIE";
+/* famille = "EP";*/
+ fourgous = "N";
+end;
+ 
+if pupp='P' then do;
+ if (month(dateff)=02 and day(dateff)=29 and (mod((year(dateff)+10),4)^=0))
+  then dat_reemp_min=mdy(03, 01, (year(dateff)+10));
+  else dat_reemp_min=mdy(month(dateff), day(dateff), year(dateff)+10);
+end;
+datnais2=substr(datnais,1,12);
+drop datnais; rename datnais2=datnais;
+run;
+/*Attribution d'une date de réemploi maximum selon l'option CAPI-VIE:
+ Nous prenons en compte l'âge du client.
+ 'C' représente un contrat de capitalisation, 'V' représente un contrat d'assurance vie.
+ Pour les contrats de capitalisation, nous donnons une valeur imaginaire "01, 01, 9999"
+ Pour les contrats d'assurance vie, nous prenons 70ème anniversaire de client
+ Ici, nous prenons en compte aussi, les clients dont la date de naissance peut être
+ "29 février".
+ Et aussi pour les contrats d'assurance vie, dont la date de naissance de client n'est pas enregistré,
+(0 ou 19000000), nous donnons une valeur imaginaire "01, 02, 9999" pour les distinguer des contrats
+de capitalisation*/
+data &mem..outil_MR_&date_calc._com&reg_com._tx; set &mem..outil_MR_&date_calc._com&reg_com._tx;
+format dat_reemp_max ddmmyy10.;
+if  branche='CAPI' then dat_reemp_max=mdy(01,01,9999);
+else do;
+ if datnais in (0, 19000000) then dat_reemp_max=mdy(01,02,9999);
+ else do;
+  if (int((datnais-int(datnais/10000)*10000)/100))=02
+  and (datnais-int(datnais/100)*100)=29
+  then dat_reemp_max=mdy(03,01,((int(datnais/10000))+70));
+   else  dat_reemp_max=mdy((int((datnais-int(datnais/10000)*10000)/100)),
+        (datnais-int(datnais/100)*100),
+        ((int(datnais/10000))+70));
+ end;
+end;
+run;
+ 
+/* Pour récupérer la date du dernier changement de situation */
+data reoc (drop = datefetc codprod); 
+set ak1.pm (keep=numctv datefetc durprm codprod reseau)
+	ak2.pm (keep=numctv datefetc durprm codprod reseau)
+	ak3.pm (keep=numctv datefetc durprm codprod reseau)
+	ak4.pm (keep=numctv datefetc durprm codprod reseau)
+	ak5.pm (keep=numctv datefetc durprm codprod reseau)
+	ak6.pm (keep=numctv datefetc durprm codprod reseau)
+	ak7.pm (keep=numctv datefetc durprm codprod reseau) ; 
+	where reseau = "SALARIES" ; 
+
+format datesit ddmmyy10.;
+if datefetc^=0 then datesit=mdy(int((datefetc-int(datefetc/10000)*10000)/100),
+       datefetc-int(datefetc/100)*100, int(datefetc/10000));
+run;
+ 
+proc sort data=&mem..outil_MR_&date_calc._com&reg_com._tx nodupkey; by numctv; run;
+proc sort data=reoc nodupkey; by numctv; run;
+ 
+/* Nous ajoutons les informations supplémentaires à notre base initiale */
+data &mem..outil_MR_&date_calc._com&reg_com._tx;
+merge &mem..outil_MR_&date_calc._com&reg_com._tx (in=a) reoc (in=b) ;
+by numctv; if a;
+run;
+ 
+/* Cette table n'est plus nécessaire */
+proc delete data=reoc; run;
+ 
+/*Nous réalisons le traitement des garanties de fidélité*/
+data &mem..outil_MR_&date_calc._com&reg_com._tx (drop = m1 a1 mois an);
+set &mem..outil_MR_&date_calc._com&reg_com._tx;
+format dat_reemp_gf datprm ddmmyy10.;
+if mod(durprm,12)=0 then do;
+ if month(dateff)=02 and day(dateff)=29 and mod((durprm/12),4)^=0
+  then datprm=mdy(03,01,year(dateff)+int(durprm/12));
+  else datprm=mdy(month(dateff),day(dateff),year(dateff)+int(durprm/12));
+end;
+if mod(durprm,12)^=0 then do;
+ mois=month(dateff)+durprm-(int(durprm/12))*12;
+ an=year(dateff)+int(durprm/12);
+ if mois>12 then do;
+  m1=mois-(int(mois/12))*12;
+  a1=an+int(mois/12);
+ end;
+ else do;
+  m1=mois;
+  a1=an;
+ end;
+ if m1 not in (2,4,6,9,11)then datprm=mdy(m1,day(dateff),a1);
+ if (m1 in (4,6,9,11)) and day(dateff)^=31 then datprm=mdy(m1,day(dateff),a1);
+ if day(dateff)=31 and (m1 in (4,6,9,11)) then datprm=mdy(m1,30,a1);
+ if day(dateff)>28 and (m1=2) then datprm=mdy(m1,28,a1);
+    if day(dateff)<=28 and (m1=2) then datprm=mdy(m1,day(dateff),a1);
+end;
+ 
+if nom ='DR' then do;
+ if (year(dateff)=1994 and 10=<month(dateff)=<12)
+  or (year(dateff)=1995 and 4=<month(dateff)=<7)
+ then dat_reemp_gf=mdy(month(dateff),day(dateff),year(dateff)+10);
+end;
+ 
+if nom ='L ' then do;
+ if (year(dateff)=1992 and month(dateff)=6 and day(dateff)>=15)
+  or (year(dateff)=1992 and 7=<month(dateff)=<12)
+ then dat_reemp_gf=mdy(01,01,2003);
+end;
+ 
+run;
+ 
+proc sort data=&mem..outil_MR_&date_calc._com&reg_com._tx; by numctv; run;
+
+ 
+/********************************************************************************************************************************/
+
+/*Pour récupérer des informations supplémentaires sur les produits 'CQ' et 'TB'.
+Nous prenons les variables de "code support"*/ /*
+data complt (drop= resf codsup);
+set ak1.pms (keep=numctv codprod codsup resf reseau) 
+	ak2.pms (keep=numctv codprod codsup resf reseau)
+	ak3.pms (keep=numctv codprod codsup resf reseau)
+	ak4.pms (keep=numctv codprod codsup resf reseau)
+	ak5.pms (keep=numctv codprod codsup resf reseau)
+	ak6.pms (keep=numctv codprod codsup resf reseau)
+	ak7.pms (keep=numctv codprod codsup resf reseau) ; 
+	where reseau = "SALARIES" ; 
+
+where  ((/*substr(codprod,1,2)* nom =  "CQ" and codsup = "CP003")  /***********************************
+   or ( nom =  "TB" and codsup = "CP004")
+   or ( nom =  "RE" and codsup = "CP005")
+   or ( nom =  "OC" and codsup = "CP006"))
+  and resf ne 0;
+complt=1;
+run;
+ 
+proc sort data=complt nodupkey; by numctv; run;
+ 
+data &mem..outil_MR_&date_calc._com&reg_com._tx;
+merge &mem..outil_MR_&date_calc._com&reg_com._tx (in=a) complt;
+by numctv; if a;
+if complt ne 1 then complt=0;
+run;
+ 
+proc delete data=complt; run;*/
+
+ 
+/* Traitement des garanties de fidélité des produits 'CQ' 'TB' 'OC' 'RE'*/
+ 
+data &mem..outil_MR_&date_calc._com&reg_com._tx (drop = /*complt*/ dtthgf datprm /*codprod*/ date_incorpo);
+set &mem..outil_MR_&date_calc._com&reg_com._tx;
+if /*substr(codprod,1,2)*/ nom in ("CQ","TB","RE","OC") then do;
+ if nom = "CQ" then do;
+  if month(dateff) = 02 and day(dateff)=29 then
+   date_incorpo = mdy(03,01,year(dateff)+10);
+  else date_incorpo = mdy(month(dateff),day(dateff),year(dateff)+10);
+ end;
+ else if nom  = "OC" then do;
+  if month(dateff) = 02 and day(dateff)=29 then date_incorpo = mdy(03,01,year(dateff)+15);
+  else date_incorpo = mdy(month(dateff),day(dateff),year(dateff)+15);
+ end;
+ if nom = "TB" then do;
+  if durprm <120 then durprm = 120;
+  else if durprm > 180 then durprm = 180;
+  if dtthgf = 0 then
+   if month(dateff)=02 and day(dateff)=29 then
+    date_incorpo = mdy(03,01,year(dateff)+int(durprm/12));
+    else date_incorpo = mdy(month(dateff),day(dateff),year(dateff)+int(durprm/12));
+ else do;
+  if substr(DTTHGF,9,2) <= month(dateff) then do;
+   if month(dateff)=02 and day(dateff)=29 then
+    date_incorpo = mdy(03,01,int(DTTHGF/10000));
+    else date_incorpo = mdy(month(dateff),day(dateff),int(DTTHGF/10000));
+  end;
+  else do;
+   if month(dateff)=02 and day(dateff)=29 then
+    date_incorpo = mdy(03,01,int(DTTHGF/10000)+1);
+    else date_incorpo = mdy(month(dateff),day(dateff),int(DTTHGF/10000)+1);
+  end;
+ end;
+end;
+ 
+if nom = "RE" then do;
+ if durprm <120 then durprm = 120;
+ else if durprm > 240 then durprm = 240;
+ if month(dateff)=02 and day(dateff)=29 then
+   date_incorpo = mdy(03,01,year(dateff)+int(durprm/12));
+ else date_incorpo = mdy(month(dateff),day(dateff),year(dateff)+int(durprm/12));
+end;
+ 
+if complt = 0 and year(date_incorpo) > &an_calc. then
+ dat_reemp_gf = mdy(&mois_calc.,&jour_calc.,&an_calc.);
+ else dat_reemp_gf = date_incorpo;
+ 
+end;
+ 
+run;
+ 
+ 
+/*******************************************************************************************/
+/*Nous ajoutons une nouvelle information concernant les taux minimum garantis*/
+data &mem..outil_MR_&date_calc._com&reg_com._tx; set &mem..outil_MR_&date_calc._com&reg_com._tx;
+tx_tech='xxxx';
+ 
+/*RETRAITE*/
+if nom in ('EM' 'EP' 'ER' 'RO' 'RI' 'RC' 'IA' 'IB' 'IE' 'IM' 'IR' 'IO' 'IP' 'IR') then do;
+ if (dateff=<mdy(09,01,1995)) then tx_tech='45NV';
+ if ((dateff>mdy(09,01,1995)) and (dateff=<mdy(4,1,1997))) then tx_tech='35__';
+ if (dateff>mdy(04,01,1997)) then tx_tech='TMGA';
+end;
+ 
+/*Mixtes & Temporaires & Vie Entière*/
+if nom in ('A3 ' 'A8 ' 'A4 ' 'T4 ' 'AP ' 'MV ' 'MVP' 'OM ' 'TM ' 'P72' 'P68' 'P75' 'MA ' 'MAP'
+ 'A75' 'A72' 'A68' 'A63' 'F72' 'F68' 'F58' 'OR ' 'ARR' 'V  ' 'A58' 'AE ' 'V48' 'BE ' 'SMF'
+ 'MXT' 'MM ' 'IN ' 'SJ ' 'T79' 'TS ' 'TE ') then tx_tech='35__';
+if nom in ('EE ' 'PL ' 'SE ') then tx_tech='45V_';
+if nom='DO ' then tx_tech='TMGA';
+if nom='A7 ' then do;
+ if (dateff=<mdy(12,31,1993)) then tx_tech='45V_';
+ if ((dateff>mdy(12,31,1993)) and (dateff=<mdy(06,30,1999))) then tx_tech='35__';
+ if (dateff>mdy(06,30,1999)) then tx_tech='2___';
+end;
+ 
+/*100% UC*/
+if nom in ('MS ' 'EA ' 'AX ' 'FF1' 'FF2' 'FF3' 'FF4' 'FF5' 'FF6' 'FF7' 'FF8' 'FF9' 'FI' 'FI1')
+/* modif 08/12/2011 */
+ or  ((nom="LI" and type in (11, 15, 21, 25, 31, 35, 51, 55, 71, 75, 81, 85, 91, 95)) or (nom="IN" and type in (11, 15,21,25,31,35)))
+ then tx_tech='uc__';
+ 
+/* contrats à 4,5% viager */
+if (nom in ('R' 'RP' 'CR ' 'CE' 'PP' 'VL' 'PE ')) then tx_tech='45V_';
+if (dateff<mdy(09,01,1995) and nom in ('TB' 'CQ' 'OC' 'RE' 'CM' 'BB')) then tx_tech='45V_';
+/*if (nom='L  ' and dateff<mdy(01,01,1992)) then tx_tech='45V_';*/
+if (nom='L' and dateff<mdy(07,01,1993)) then tx_tech='45V_';
+if (nom='DR' and branche='CAPI' and dateff<mdy(09,01,1995)) then tx_tech='45V_';
+if (nom='DR' and branche='VIE' and dateff<mdy(07,01,1993)) then tx_tech='45V_';
+if (nom='LI' and type in (01,05) ) then tx_tech='45V_';
+if (nom='IN' and type in (01,05) ) then tx_tech='45V_';
+ 
+/* modif 08/12/2011 */
+/* contrats à 4,5% non viager pour RE OC*/
+if (dateff<mdy(09,01,1995) and nom in ('OC ' 'RE ')) then tx_tech='45NV';
+ 
+/* contrats à 4,5% non viager */
+if dateff<mdy(09,01,1995) and  ( (nom='L' and dateff >= mdy(07,01,1993))
+     or (nom='DR' and branche='VIE' and dateff>=mdy(07,01,1993))
+/* modif 08/12/2011 */
+  /*or (nom in ('LI ' 'RF ' 'AR ')) )  */
+  or (nom in ('RF' 'AR'))
+  or (nom="LI" and type not in (01,05,11, 15, 21, 25, 31, 35, 51, 55, 71, 75, 81, 85, 91, 95))  )
+  then tx_tech='45NV';
+ 
+/* contrats à 3,5% */
+if ( dateff>=mdy(09,01,1995) and dateff =< mdy(03,31,1997)
+/* modif 08/12/2011 */
+/* and nom in ('L  ' 'DR ' 'LI ' 'RF ' 'AR ' 'TB ' 'CQ ' 'OC ' 'RE ' 'CM ' 'BB ' 'OU ') */
+ and ( nom in ('L' 'DR' 'RF' 'AR' 'TB' 'CQ' 'OC' 'RE' 'CM' 'BB' 'OU')
+ or (nom="LI" and type not in (01,05,11, 15, 21, 25, 31, 35, 51, 55, 71, 75, 81, 85, 91, 95)) )  )
+ or nom in ('A1' 'K1' 'C' 'G')
+then tx_tech='35__';
+ 
+/* modif 08/12/2011 */
+/* contrats à 3,5% non viager pour RE OC*/
+if ( dateff>=mdy(09,01,1995) and dateff =< mdy(03,31,1997) and nom in ('OC ' 'RE ')) then tx_tech='35NV';
+ 
+ 
+/* contrats au TMGA */
+if nom in ('FC ' 'NP ' 'PF ' 'XP ' 'XL ') or (nom='VL' and type='35')
+ or  (nom="LI" and type in (22,23))
+ or ( dateff >= mdy(04,01,1997) and  (nom in ('CM' 'CQ' 'DR' 'L' 'OC ' 'OU ' 'RE ' 'RF ' 'TB ')
+ /* modif 08/12/2011 */
+  or (nom="LI" and type not in (01,05,11, 15, 21, 25, 31, 35, 51, 55, 71, 75, 81, 85, 91, 95)) ) )
+ /* modif 08/12/2011 */
+then tx_tech='TMGA';
+ 
+/* Taux depuis la bascule en 2007 :*/
+tx_tech_basc07 = tx_tech;
+if nom='CR' and type in ('01','41','42')then tx_tech_basc07='TMGA';
+if nom='R' and type in ('12','14','16','19')then tx_tech_basc07='TMGA';
+if nom='RP' and type='05' then tx_tech_basc07='TMGA';
+if nom='L' /*and type in ('11','15')*/ and (dateff>=mdy(07,01,1993) /*and dateff=<mdy(02,28,1997)*/)
+ then tx_tech_basc07='TMGA' ;
+if  nom='OU' /*and type in ('02','05') and (dateff>=mdy(05,30,1996) and dateff=<mdy(03,31,1997)) */
+ then tx_tech_basc07='TMGA';
+if nom='AR' /*and type in ('02','05') and (dateff>=mdy(01,01,1994) and dateff=<mdy(03,31,1997)) */
+ then tx_tech_basc07='TMGA';
+if nom='RF' and type='05' and (dateff>=mdy(04,01,1993) /*and dateff=<mdy(04,01,1997)*/)
+ then tx_tech_basc07='TMGA';
+if nom='CM' and type in ('02','05','12','15')and (dateff>=mdy(04,01,1993) /*and dateff<=mdy(04,01,1997)*/)
+ then tx_tech_basc07='TMGA';
+if nom ='VL' and type in ('05','25')and (dateff>=mdy(04,01,1993) /*and dateff<=mdy(04,01,1997)*/)
+ then tx_tech_basc07='TMGA';
+run;
+ 
+data &mem..outil_MR_&date_calc._com&reg_com._tx (drop = numctv);
+set &mem..outil_MR_&date_calc._com&reg_com._tx;
+police=int(numctv/1);
+codport=int(codport/100);
+codrcv=nom;
+run;
+ 
+ 
+ 
+/*COMMISSIONNEMENT*/
+ 
+/* On récupère les règles de commissionnement à appliquer sur les données */
+proc sort data=rep.commissionnement_&reg_com; by codrcv type ;run;
+proc sort data=&mem..outil_MR_&date_calc._com&reg_com._tx; by codrcv type ; run;
+ 
+Data &mem..com_50;
+merge &mem..outil_MR_&date_calc._com&reg_com._tx(in=a) rep.commissionnement_&reg_com(in=b);
+by codrcv type ;
+if b;
+run;
+ proc delete data=&mem..commissionnement_&reg_com;run;
+ 
+/* Traitement du commissionnement à 50% */
+data &mem..com_50; set &mem..com_50;
+format min_50 date_anc ddmmyy10.;
+if (garfid='OUI' and year(DAT_REEMP_GF)>1800) then do;
+ if (month(dateff)=02 and day(dateff)=29 and (mod((year(dateff)+10),4)^=0))
+  then date_anc = mdy(03,01,year(dateff)+anciennete);
+ else date_anc = mdy(month(dateff), day(dateff), year(dateff)+anciennete);
+ if DAT_REEMP_GF > date_anc then min_50 = DAT_REEMP_GF;
+ else min_50=date_anc;
+end;
+if (garfid='OUI' and year(DAT_REEMP_GF)<1800) then
+ min_50=mdy(month(DAT_REEMP_GF), day(DAT_REEMP_GF), year(DAT_REEMP_GF)+300);
+if garfid='NON' and anciennete^=. then do ;
+ if (month(dateff)=02 and day(dateff)=29 and (mod((year(dateff)+10),4)^=0) and anciennete^=8)
+ then min_50=mdy(03, 01, (year(dateff)+anciennete));
+ else min_50=mdy(month(dateff), day(dateff), year(dateff)+anciennete);
+end;
+run;
+ 
+/* Remplacement des valeurs abérantes : état SU alors que réduit depuis plus de deux ans */
+data  &mem..com_50; set  &mem..com_50; if codeta='SU' then codeta='RD'; run;
+data &mem..com_50 (drop = min_50 garfid anciennete codrcv); set &mem..com_50;
+format tx_comm $2.;
+if (min_50^=. and min_50=<mdy(&mois,&jour_calc,&an_fin)
+ and dat_reemp_min=<mdy(&mois,&jour_calc,&an_fin)) then tx_comm='50';
+run;
+ 
+/* On récupère les infos dans la base totale */
+proc sort data=&mem..outil_MR_&date_calc._com&reg_com._tx; by police; run;
+proc sort data=&mem..com_50 nodupkey; by police; run;
+ 
+data &mem..outil_MR_&date_calc._com&reg_com._tx;
+merge &mem..outil_MR_&date_calc._com&reg_com._tx  &mem..com_50;
+by police;
+run;
+ 
+/* On rajoute le commissionnement à 25% pour les autres contrats réemployables */
+data &mem..outil_MR_&date_calc._com&reg_com._tx;
+set &mem..outil_MR_&date_calc._com&reg_com._tx;
+if tx_comm^='50' then do;
+ if dat_reemp_min<mdy(&mois,&jour_calc,&an_fin) then tx_comm='25'; else tx_comm='00';
+end;
+if (((dat_reemp_min<=mdy(&mois,&jour_calc,&an_fin)) and (codeta="RD") and
+ (mdy(&mois,&jour_calc,&an_fin)-datesit>730))) then tx_comm='50';
+
+ if tx_tech='xxxx' then tx_comm="00" ;
+run;
+/*******************************************************************************************/
+/********************************** TRAITEMENT DES PUVL ************************************/
+/*******************************************************************************************/
+ 
+data puvl_0; set rep.puvl_&reg_com (where=(puvl_comm=0)); keep nom type puvl_comm; run;
+proc sort data=puvl_0; by nom type;run;
+proc sort data=&mem..outil_MR_&date_calc._com&reg_com._tx; by nom type; run;
+ 
+data  &mem..outil_MR_&date_calc._com&reg_com._tx;
+merge  &mem..outil_MR_&date_calc._com&reg_com._tx(in=a)  puvl_0(in=b);
+by  nom type; if a;
+if puvl_comm ne 0 then puvl_comm=1;
+run;
+ 
+data &mem..outil_MR_&date_calc._com&reg_com._tx (drop = puvl_comm);
+set &mem..outil_MR_&date_calc._com&reg_com._tx;
+if puvl_comm=0 then tx_comm='00';
+ /* Les contrats non rachetables théoriquement sont initialisés à comm=0 */
+if nom in ('EM' 'ER' 'IB' 'IM' 'IO' 'IR' 'RO') then tx_comm='00';
+run;
+ 
+/* Suppression des tables dorénavant inutiles */
+proc delete data=&mem..com_50;run;
+ 
+/* VERIFICATION QU'IL N'Y A PAS DE DOUBLON */
+proc sort data=&mem..outil_MR_&date_calc._com&reg_com._tx nodupkey; by police; run;
+ 
+/* FIN DU TRAITEMENT DU COMMISSIONNEMENT */
+ 
+/*SELECTION*/
+ 
+proc sort data=&mem..outil_MR_&date_calc._com&reg_com._tx; by police; run;
+proc sort data=pm_rcs2; by police; run;
+ 
+data &mem..outil_MR_&date_calc._com&reg_com._tx;
+merge &mem..outil_MR_&date_calc._com&reg_com._tx(in=a) pm_rcs2 (in=b);
+by police; if a;
+run;
+ 
+data &mem..outil_MR_&date_calc._com&reg_com._tx;
+set &mem..outil_MR_&date_calc._com&reg_com._tx;
+if pm>0;
+run;
+ 
+/*PYRAMIDE COMMERCIALE*/
+ 
+ 
+data pyr; set Base_Loc.Pyr_rs (keep = codport region dcr inspecteur inspecteur_id code_inspection  salarie salarie_id salarie_grade mandataire
+ mandat_id animateur anim_id) ;
+run;
+ 
+proc sort data=pyr nodupkey; by codport;run;
+proc sort data= &mem..outil_MR_&date_calc._com&reg_com._tx; by codport;run;
+ 
+data &mem..outil_MR_&date_calc._com&reg_com._tx;
+merge &mem..outil_MR_&date_calc._com&reg_com._tx (in=a) pyr(in=b);
+by codport;
+if a;
+run;
+ 
+ 
+
+data MR ; 
+	set &mem..outil_MR_&date_calc._com&reg_com._tx; 
+ 	where tx_comm = "50" or tx_comm = "25" ; 
+run ;  
+
+proc sort data= mr ; by libprod ; run ; 
+proc summary data=MR  ; by libprod ; var pm ; output out = st1  sum= ; run ; 
+
+　
+/*proc delete data=pyr; run;*/
+ 
+ 
+ 
